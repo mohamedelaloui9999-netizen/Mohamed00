@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mohamed El Aloui | Cyber Security & Web Dev</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Poppins:wght@400;600;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-black: #050505;
+            --bg-card: rgba(15, 15, 15, 0.8);
+            --accent: #00f0ff;
+            --accent-dim: rgba(0, 240, 255, 0.3);
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --font-main: 'Inter', sans-serif;
+            --font-heading: 'Poppins', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        .light-mode {
+            --bg-black: #f0f2f5;
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --accent: #0066ff;
+            --accent-dim: rgba(0, 102, 255, 0.2);
+            --text-main: #1a1a1a;
+            --text-muted: #555555;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-black);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            cursor: none;
+            transition: background-color 0.5s ease;
+        }
+
+        #matrix-canvas { position: fixed; top: 0; left: 0; z-index: -2; opacity: 0.15; }
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px; z-index: 1000; pointer-events: none; opacity: 0.3;
+        }
+
+        .cursor {
+            width: 15px; height: 15px; border: 2px solid var(--accent);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999;
+            transition: transform 0.1s ease-out; mix-blend-mode: difference;
+        }
+        .cursor-dot {
+            width: 4px; height: 4px; background: var(--accent);
+            border-radius: 50%; position: fixed; pointer-events: none; z-index: 10000;
+        }
+
+        .header {
+            position: fixed; top: 0; width: 100%; z-index: 100;
+            padding: 1.2rem 0; transition: 0.4s;
+        }
+        .header.scrolled {
+            background: var(--bg-card); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--accent-dim);
+        }
+        .nav-container { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+        .logo { font-size: 1.4rem; font-weight: 900; text-decoration: none; color: var(--text-main); }
+        .logo span { color: var(--accent); }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-link { 
+            text-decoration: none; color: var(--text-muted); font-size: 0.85rem; 
+            font-weight: 600; transition: 0.3s; text-transform: uppercase;
+        }
+        .nav-link:hover, .nav-link.active { color: var(--accent); }
+
+        .hero {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 0 1rem;
+        }
+        .hero-content h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 900; margin-bottom: 1rem; }
+        .highlight { 
+            background: linear-gradient(90deg, var(--accent), #7000ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-content p { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto 2rem; }
+        .btn {
+            padding: 1rem 2rem; border-radius: 8px; font-weight: 700; 
+            text-decoration: none; transition: 0.3s; display: inline-block;
+        }
+        .btn-primary { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-dim); }
+        .btn-primary:hover { transform: scale(1.05); box-shadow: 0 0 30px var(--accent); }
+
+        .terminal-section { padding: 100px 0; }
+        .terminal-window {
+            width: 100%; max-width: 900px; background: #080808;
+            border: 1px solid var(--accent-dim); border-radius: 12px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            overflow: hidden; margin: 0 auto; font-family: var(--font-mono);
+        }
+        .terminal-header {
+            background: #111; padding: 12px 20px; display: flex; align-items: center;
+            border-bottom: 1px solid #222;
+        }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .red { background: #ff5f56; } .yellow { background: #ffbd2e; } .green { background: #27c93f; }
+        .terminal-body {
+            padding: 25px; height: 400px; overflow-y: auto; color: #00ff00; font-size: 0.9rem;
+        }
+        .term-line { margin-bottom: 10px; display: flex; gap: 10px; }
+        .term-prompt { color: var(--accent); font-weight: bold; }
+        .term-input {
+            background: transparent; border: none; color: #fff; 
+            font-family: var(--font-mono); outline: none; width: 100%;
+        }
+        .term-output { color: var(--text-muted); margin-bottom: 15px; white-space: pre-wrap; }
+
+        /* --- PROJECTS SECTION (Media Support) --- */
+        .projects-section { padding: 100px 0; }
+        .section-title { text-align: center; margin-bottom: 4rem; }
+        .section-title h2 { font-size: 2.5rem; }
+        
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        .project-card {
+            background: var(--bg-card);
+            border: 1px solid var(--accent-dim);
+            border-radius: 24px;
+            transition: 0.4s;
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .project-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 240, 255, 0.15);
+        }
+
+        /* Media Container */
+        .project-media {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--accent-dim);
+        }
+        .project-media img, .project-media video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.5s;
+        }
+        .project-card:hover .project-media img, .project-card:hover .project-media video {
+            transform: scale(1.1);
+        }
+        .project-media i {
+            font-size: 4rem;
+            color: var(--accent);
+        }
+
+        .project-content {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .project-card h3 { font-size: 1.5rem; margin-bottom: 0.8rem; }
+        .project-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; flex-grow: 1; }
+        .project-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .tag { 
+            font-size: 0.7rem; background: rgba(0, 240, 255, 0.1); 
+            color: var(--accent); padding: 4px 10px; border-radius: 50px; 
+            border: 1px solid var(--accent-dim); font-family: var(--font-mono);
+        }
+        .project-link { 
+            text-decoration: none; color: var(--text-main); 
+            font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;
+        }
+        .project-link:hover { color: var(--accent); }
+
+        .insta-section { text-align: center; padding: 80px 0; }
+        .insta-btn {
+            display: inline-flex; align-items: center; gap: 1rem;
+            padding: 1.2rem 2.5rem; background: var(--bg-card);
+            border: 2px solid var(--accent); border-radius: 100px;
+            text-decoration: none; color: var(--text-main);
+            font-weight: 800; transition: 0.4s; box-shadow: 0 0 20px var(--accent-dim);
+        }
+        .insta-btn:hover { background: var(--accent); color: #000; transform: scale(1.1); }
+
+        .contact-box { max-width: 600px; margin: 0 auto; padding: 0 2rem; }
+        .form-input {
+            width: 100%; padding: 1.2rem; background: #0a0a0a; 
+            border: 1px solid #222; color: #fff; border-radius: 12px; 
+            margin-bottom: 1.5rem; outline: none; transition: 0.3s;
+        }
+        .form-input:focus { border-color: var(--accent); }
+
+        @media (max-width: 768px) { .nav-links { display: none; } }
+    </style>
+</head>
+
+<body>
+    <div class="scanlines"></div>
+    <canvas id="matrix-canvas"></canvas>
+
+    <div class="cursor"></div>
+    <div class="cursor-dot"></div>
+
+    <header class="header" id="header">
+        <div class="nav-container">
+            <a href="#" class="logo">MOHAMED<span>.</span>ALOUl</a>
+            <ul class="nav-links">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+                <li><a href="#projects" class="nav-link">Projects</a></li>
+                <li><a href="#contact" class="nav-link">Contact</a></li>
+            </ul>
+            <button id="theme-toggle" class="btn" style="background:none; border:1px solid var(--accent-dim); color:var(--text-main); font-size:0.7rem; padding:5px 10px; cursor:pointer;">MODE</button>
+        </div>
+    </header>
+
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Securing the <br><span class="highlight">Digital Frontier</span></h1>
+            <p>Cybersecurity Specialist & Full-Stack Developer. I build systems that are not only fast but impenetrable.</p>
+            <div style="display:flex; gap:1rem; justify-content:center;">
+                <a href="#projects" class="btn btn-primary">View Dossiers</a>
+                <a href="#about" class="btn" style="color:var(--text-main); border:1px solid var(--accent-dim);">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="terminal-section">
+        <div class="terminal-window">
+            <div class="terminal-header">
+                <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+                <span style="margin-left: 15px; font-size: 0.8rem; color: #888;">root@mohamed_os: ~/core</span>
+            </div>
+            <div class="terminal-body" id="term-body">
+                <div class="term-output">System Booted... Type 'help' to explore.</div>
+                <div class="term-line">
+                    <span class="term-prompt">root@mohamed:~$</span>
+                    <input type="text" class="term-input" id="term-input" autofocus spellcheck="false">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="projects" class="projects-section">
+        <div class="section-title">
+            <h2>Secure <span class="highlight">Projects</span></h2>
+            <p style="color: var(--text-muted);">Selected works from my digital archive</p>
+        </div>
+        <div class="projects-grid" id="projects-grid">
+            <!-- Projects will be loaded here by JavaScript -->
+        </div>
+    </section>
+
+    <section class="insta-section">
+        <a href="https://instagram.com/m.o.h.a.m.e.d.9.9.9.9" target="_blank" class="insta-btn">
+            <i class="fa-brands fa-instagram"></i>
+            <span>@m.o.h.a.m.e.d.9.9.9.9</span>
+        </a>
+    </section>
+
+    <section id="contact" class="section" style="padding: 100px 0; background: rgba(0,0,0,0.3);">
+        <div class="contact-box">
+            <div class="section-title">
+                <h2>Initiate <span class="highlight">Contact</span></h2>
+            </div>
+            <form>
+                <input type="text" class="form-input" placeholder="Identity Name">
+                <input type="email" class="form-input" placeholder="Secure Email">
+                <textarea class="form-input" rows="5" placeholder="Message Content..."></textarea>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Transmit Data <i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </section>
+
+    <footer style="padding: 3rem 0; text-align: center; border-top: 1px solid var(--accent-dim); color: var(--text-muted); font-family: var(--font-mono);">
+        <p>&copy; <span id="year"></span> MOHAMED EL ALOUI // ALL SYSTEMS SECURED</p>
+    </footer>
+
+    <script>
+        /* 
+           ===========================================================
+           📦 PLACE TO ADD YOUR PROJECTS (مكان إضافة مشاريعك)
+           ===========================================================
+           Options:
+           - If you have a video, add 'video: "link.mp4"'
+           - If you have an image, add 'image: "link.jpg"'
+           - If you have neither, add 'icon: "fa-solid fa-code"'
+        */
+        const myProjects = [
+            {
+                title: "Secure Login System",
+                desc: "A highly secure authentication system with encrypted passwords and session management.",
+                tags: ["JavaScript", "CSS", "Security"],
+                link: "#",
+                video: "https://www.w3schools.com/html/mov_bbb.mp4", // مثال لفيديو (استبدله برابط فيديو مشروعك)
+            },
+            {
+                title: "Network Scanner",
+                desc: "A Python-based tool that scans ports and identifies open services in a network.",
+                tags: ["Python", "Networking", "Kali Linux"],
+                link: "#",
+                image: "https://via.placeholder.com/400x200", // مثال لصورة (استبدلها برابط صورة مشروعك)
+            },
+            {
+                title: "Cyber Portfolio v3",
+                desc: "This professional portfolio designed with high-end animations and a functional CLI.",
+                tags: ["HTML", "CSS", "JS"],
+                link: "#",
+                icon: "fa-solid fa-globe" // يعود للأيقونة إذا لم توجد صورة أو فيديو
+            },
+        ];
+
+        function renderProjects() {
+            const grid = document.getElementById('projects-grid');
+            grid.innerHTML = myProjects.map(proj => {
+                // Determine what to show in the media area
+                let mediaContent = '';
+                if (proj.video) {
+                    mediaContent = `<video src="${proj.video}" autoplay muted loop></video>`;
+                } else if (proj.image) {
+                    mediaContent = `<img src="${proj.image}" alt="${proj.title}">`;
+                } else {
+                    mediaContent = `<i class="${proj.icon || 'fa-solid fa-code'}"></i>`;
+                }
+
+                return `
+                <div class="project-card">
+                    <div class="project-media">
+                        ${mediaContent}
+                    </div>
+                    <div class="project-content">
+                        <h3>${proj.title}</h3>
+                        <p>${proj.desc}</p>
+                        <div class="project-tags">
+                            ${proj.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                        <a href="${proj.link}" class="project-link">View Dossier <i class="fa-solid fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // --- Matrix Effect ---
+        function initMatrix() {
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const chars = "01";
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+            function draw() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = fontSize + 'px monospace';
+                for(let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(draw, 35);
+        }
+
+        // --- Cursor ---
+        function initCursor() {
+            const cursor = document.querySelector('.cursor');
+            const dot = document.querySelector('.cursor-dot');
+            document.addEventListener('mousemove', (e) => {
+                dot.style.left = e.clientX + 'px';
+                dot.style.top = e.clientY + 'px';
+                cursor.animate({ left: `${e.clientX - 7}px`, top: `${e.clientY - 7}px` }, { duration: 400, fill: 'forwards' });
+            });
+        }
+
+        // --- Terminal ---
+        function initTerminal() {
+            const input = document.getElementById('term-input');
+            const body = document.getElementById('term-body');
+            const commands = {
+                'help': 'Commands: about, skills, insta, clear',
+                'about': 'Mohamed El Aloui: Cyber Security expert & Web Architect.',
+                'skills': 'HTML, CSS, JS, Python, Pentesting, Network Security.',
+                'insta': 'https://instagram.com/m.o.h.a.m.e.d.9.9.9.9'
+            };
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const cmd = input.value.toLowerCase().trim();
+                    if(cmd === 'clear') {
+                        body.innerHTML = `<div class="term-line"><span class="term-prompt">root@mohamed:~$</span><input type="text" class="term-input" id="term-input" autofocus></div>`;
+                        initTerminal(); return;
+                    }
+                    const output = document.createElement('div');
+                    output.className = 'term-output';
+                    output.textContent = commands[cmd] || `Unknown command: ${cmd}. Type 'help'.`;
+                    const line = body.querySelector('.term-line');
+                    body.insertBefore(output, line);
+                    input.value = '';
+                    body.scrollTop = body.scrollHeight;
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMatrix();
+            initCursor();
+            initTerminal();
+            renderProjects();
+            document.getElementById('year').textContent = new Date().getFullYear();
+            document.getElementById('theme-toggle').addEventListener('click', () => document.body.classList.toggle('light-mode'));
+            window.addEventListener('scroll', () => {
+                document.getElementById('header').classList.toggle('scrolled', window.scrollY > 50);
+            });
+        });
+    </script>
+</body>
+</html>
